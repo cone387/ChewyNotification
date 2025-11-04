@@ -1,0 +1,19 @@
+services:
+  chewy-notification:
+    build: .
+    container_name: chewy-notification
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - DJANGO_SETTINGS_MODULE=example_project.settings
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - chewy-network
+
+networks:
+  chewy-network:
+    driver: bridge
