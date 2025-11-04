@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM docker.m.daocloud.io/library/python:3.11-slim
 
 # 设置工作目录
 WORKDIR /app
@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制项目文件
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 COPY chewy_notification ./chewy_notification
 COPY example_project ./example_project
 
