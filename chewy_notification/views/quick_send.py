@@ -43,6 +43,16 @@ class QuickSendView(APIView):
         content = request.data.get("content")
         async_send = request.data.get("async_send", False)
         
+        # 提取 Bark 扩展参数
+        extra_params = {}
+        bark_params = [
+            "subtitle", "level", "badge", "sound", "icon", "group", "url",
+            "copy", "auto_copy", "call", "is_archive"
+        ]
+        for param in bark_params:
+            if param in request.data:
+                extra_params[param] = request.data[param]
+        
         # 验证必填参数
         if not channel_id or not title or not content:
             return Response(
@@ -104,7 +114,7 @@ class QuickSendView(APIView):
                 })
             else:
                 # 同步发送
-                result = self._send_to_target(channel, target, title, content)
+                result = self._send_to_target(channel, target, title, content, extra_params)
                 results.append(result)
         
         return Response(
@@ -131,8 +141,11 @@ class QuickSendView(APIView):
             return NotificationTarget.objects.filter(target_type=target_type)
         return NotificationTarget.objects.none()
     
-    def _send_to_target(self, channel, target, title, content):
+    def _send_to_target(self, channel, target, title, content, extra_params=None):
         """发送到单个目标"""
+        if extra_params is None:
+            extra_params = {}
+        
         # 创建发送记录
         record = NotificationRecord.objects.create(
             channel=channel,
@@ -141,9 +154,14 @@ class QuickSendView(APIView):
         )
         
         try:
-            # 获取服务并发送
+            # 获取服务并发送（使用统一接口）
             service = get_service_for_channel(channel)
-            result = service.send(target.target_value, title, content)
+            result = service.send(
+                target=target.target_value,
+                title=title,
+                content=content,
+                **extra_params  # 传递所有扩展参数
+            )
             
             # 更新记录
             record.status = NotificationRecord.Status.SUCCESS

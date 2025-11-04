@@ -1,78 +1,91 @@
 import requests
 import logging
+from .base_service import BaseNotificationService
 
 logger = logging.getLogger(__name__)
 
 
-class FeishuService:
+class FeishuService(BaseNotificationService):
     """飞书通知服务"""
     
     def __init__(self, config):
-        """
-        初始化飞书服务
-        
-        配置示例:
-        {
-            "webhook_url": "https://open.feishu.cn/open-apis/bot/v2/hook/xxx"
-        }
-        """
+        super().__init__(config)
         self.webhook_url = config.get("webhook_url")
     
-    def send(self, webhook_url, title, content):
+    def _send_implementation(self, payload):
         """
-        发送飞书通知
+        飞书的具体发送实现
+        
+        飞书支持部分 Bark 参数：
+        - title: 标题
+        - content/body: 内容
+        - url: 点击跳转（可添加按钮）
         
         Args:
-            webhook_url: 飞书 Webhook 地址（如果为空则使用配置中的）
-            title: 通知标题
-            content: 通知内容
-        
+            payload: 参数字典
+            
         Returns:
             dict: 发送结果
         """
-        url = webhook_url or self.webhook_url
+        url = payload.get("target") or self.webhook_url
         
         if not url:
             raise ValueError("缺少飞书Webhook URL")
         
         # 构建消息体
-        payload = {
+        card_elements = [
+            {
+                "tag": "div",
+                "text": {
+                    "tag": "plain_text",
+                    "content": payload["content"]
+                }
+            }
+        ]
+        
+        # 如果有 URL，添加按钮
+        if "url" in payload:
+            card_elements.append({
+                "tag": "action",
+                "actions": [
+                    {
+                        "tag": "button",
+                        "text": {
+                            "tag": "plain_text",
+                            "content": "🔗 点击查看"
+                        },
+                        "type": "default",
+                        "url": payload["url"]
+                    }
+                ]
+            })
+        
+        feishu_payload = {
             "msg_type": "interactive",
             "card": {
                 "header": {
                     "title": {
                         "tag": "plain_text",
-                        "content": title
+                        "content": payload["title"]
                     }
                 },
-                "elements": [
-                    {
-                        "tag": "div",
-                        "text": {
-                            "tag": "plain_text",
-                            "content": content
-                        }
-                    }
-                ]
+                "elements": card_elements
             }
         }
         
         try:
-            response = requests.post(url, json=payload, timeout=10)
+            response = requests.post(url, json=feishu_payload, timeout=10)
             response.raise_for_status()
             
             result = response.json()
             
             if result.get("code") == 0:
-                logger.info(f"飞书通知发送成功")
                 return {
                     "success": True,
                     "response": result
                 }
             else:
-                logger.error(f"飞书通知发送失败: {result}")
                 raise Exception(f"飞书返回错误: {result.get('msg')}")
         
         except requests.RequestException as e:
-            logger.error(f"飞书通知发送失败: {str(e)}")
             raise Exception(f"飞书发送失败: {str(e)}")

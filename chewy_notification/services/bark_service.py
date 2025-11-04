@@ -1,11 +1,11 @@
 import requests
 import logging
-from urllib.parse import quote
+from .base_service import BaseNotificationService
 
 logger = logging.getLogger(__name__)
 
 
-class BarkService:
+class BarkService(BaseNotificationService):
     """Bark 通知服务"""
     
     def __init__(self, config):
@@ -17,44 +17,64 @@ class BarkService:
             "server_url": "https://api.day.app"
         }
         """
+        super().__init__(config)
         self.server_url = config.get("server_url", "https://api.day.app")
     
-    def send(self, device_key, title, content):
+    def _send_implementation(self, payload):
         """
-        发送 Bark 通知
+        Bark 的具体发送实现
         
-        Bark API 支持多种方式：
-        1. POST /push + JSON {“device_key”, “title”, “body”} (推荐，支持 UTF-8)
-        2. POST /:key + JSON {“title”, “body”}
-        3. GET /:key/:title/:body
+        支持所有 Bark 参数：
+        - 基础：device_key, title, body, subtitle
+        - 提醒：level, badge, sound, call
+        - 交互：url, copy, auto_copy
+        - 展示：icon, group
+        - 存储：is_archive
         
         Args:
-            device_key: Bark 设备 key
-            title: 通知标题
-            content: 通知内容
-        
+            params: 参数字典
+            
         Returns:
             dict: 发送结果
         """
-        # 使用 POST /push 方式，支持 UTF-8 编码
         url = f"{self.server_url}/push"
         
-        payload = {
-            "device_key": device_key,
-            "title": title,
-            "body": content
+        # 构建 Bark API payload
+        bark_payload = {
+            "device_key": payload["target"],
+            "title": payload["title"],
+            "body": payload["content"],
         }
+        
+        # 映射参数到 Bark API 格式
+        param_mapping = {
+            "subtitle": "subtitle",
+            "level": "level",
+            "badge": "badge",
+            "sound": "sound",
+            "icon": "icon",
+            "group": "group",
+            "url": "url",
+            "copy": "copy",
+            "auto_copy": "autoCopy",
+            "call": "call",
+            "is_archive": "isArchive",
+        }
+        
+        # 添加可选参数
+        for param_key, bark_key in param_mapping.items():
+            if param_key in payload:
+                bark_payload[bark_key] = payload[param_key]
         
         try:
             response = requests.post(
                 url, 
-                json=payload,
+                json=bark_payload,
                 headers={'Content-Type': 'application/json; charset=utf-8'},
                 timeout=10
             )
             response.raise_for_status()
             
-            logger.info(f"Bark通知发送成功: {device_key}")
             return {
                 "success": True,
                 "status_code": response.status_code,
@@ -62,5 +82,4 @@ class BarkService:
             }
         
         except requests.RequestException as e:
-            logger.error(f"Bark通知发送失败: {str(e)}")
             raise Exception(f"Bark发送失败: {str(e)}")

@@ -1,41 +1,44 @@
 from django.core.mail import EmailMessage
 from django.conf import settings
 import logging
+from .base_service import BaseNotificationService
 
 logger = logging.getLogger(__name__)
 
 
-class EmailService:
+class EmailService(BaseNotificationService):
     """邮件通知服务"""
     
     def __init__(self, config):
-        """
-        初始化邮件服务
-        
-        配置示例:
-        {
-            "host": "smtp.gmail.com",
-            "port": 587,
-            "username": "your_email@gmail.com",
-            "password": "your_password",
-            "from_email": "your_email@gmail.com",
-            "use_tls": true
-        }
-        """
-        self.config = config
+        super().__init__(config)
     
-    def send(self, to_email, title, content):
+    def _send_implementation(self, payload):
         """
-        发送邮件通知
+        邮件的具体发送实现
+        
+        邮件支持部分 Bark 参数：
+        - title: 标题
+        - content/body: 内容
+        - subtitle: 可添加到内容中
         
         Args:
-            to_email: 收件人邮箱
-            title: 邮件标题
-            content: 邮件内容
-        
+            payload: 参数字典
+            
         Returns:
             dict: 发送结果
         """
+        to_email = payload["target"]
+        title = payload["title"]
+        content = payload["content"]
+        
+        # 如果有 subtitle，添加到内容中
+        if "subtitle" in payload:
+            content = f"{payload['subtitle']}\n\n{content}"
+        
+        # 如果有 URL，添加到内容末尾
+        if "url" in payload:
+            content = f"{content}\n\n🔗 {payload['url']}"
+        
         try:
             # 创建邮件
             email = EmailMessage(
@@ -49,7 +52,6 @@ class EmailService:
             # 发送
             email.send(fail_silently=False)
             
-            logger.info(f"邮件通知发送成功: {to_email}")
             return {
                 "success": True,
                 "to": to_email,
@@ -57,7 +59,6 @@ class EmailService:
             }
         
         except Exception as e:
-            logger.error(f"邮件通知发送失败: {str(e)}")
             raise Exception(f"邮件发送失败: {str(e)}")
     
     def _get_connection(self):
