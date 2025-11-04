@@ -1,5 +1,6 @@
 import requests
 import logging
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,11 @@ class BarkService:
         """
         发送 Bark 通知
         
+        Bark API 支持多种方式：
+        1. POST /push + JSON {“device_key”, “title”, “body”} (推荐，支持 UTF-8)
+        2. POST /:key + JSON {“title”, “body”}
+        3. GET /:key/:title/:body
+        
         Args:
             device_key: Bark 设备 key
             title: 通知标题
@@ -30,10 +36,22 @@ class BarkService:
         Returns:
             dict: 发送结果
         """
-        url = f"{self.server_url}/{device_key}/{title}/{content}"
+        # 使用 POST /push 方式，支持 UTF-8 编码
+        url = f"{self.server_url}/push"
+        
+        payload = {
+            "device_key": device_key,
+            "title": title,
+            "body": content
+        }
         
         try:
-            response = requests.get(url, timeout=10)
+            response = requests.post(
+                url, 
+                json=payload,
+                headers={'Content-Type': 'application/json; charset=utf-8'},
+                timeout=10
+            )
             response.raise_for_status()
             
             logger.info(f"Bark通知发送成功: {device_key}")

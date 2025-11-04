@@ -33,7 +33,14 @@ class NtfyService:
             dict: 发送结果
         """
         url = f"{self.server_url}/{topic}"
-        headers = {"Title": title}
+        
+        # Ntfy 支持在 Header 中使用 UTF-8，需要手动编码
+        headers = {}
+        
+        # 将标题编码为 UTF-8 字节，然后用 latin-1 解码（这是 HTTP Header 的标准做法）
+        if title:
+            title_bytes = title.encode('utf-8')
+            headers["Title"] = title_bytes.decode('latin-1')
         
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
