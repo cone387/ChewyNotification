@@ -6,6 +6,7 @@ from chewy_notification.views import (
     NotificationTargetViewSet,
     NotificationRecordViewSet,
     NotificationSendView,
+    QuickSendView,
 )
 
 # 创建路由器
@@ -22,6 +23,9 @@ urlpatterns = [
     # API 路由
     path("api/notifications/", include(router.urls)),
     
-    # 手动发送接口
+    # 手动发送接口（基于模板）
     path("api/notifications/send/", NotificationSendView.as_view(), name="notification-send"),
+    
+    # 快速发送接口（无需模板）
+    path("api/notifications/quick-send/", QuickSendView.as_view(), name="notification-quick-send"),
 ]

@@ -3,6 +3,7 @@ from .template import NotificationTemplateViewSet
 from .target import NotificationTargetViewSet
 from .record import NotificationRecordViewSet
 from .send import NotificationSendView
+from .quick_send import QuickSendView
 
 __all__ = [
     "NotificationChannelViewSet",
@@ -10,4 +11,5 @@ __all__ = [
     "NotificationTargetViewSet",
     "NotificationRecordViewSet",
     "NotificationSendView",
+    "QuickSendView",
 ]
